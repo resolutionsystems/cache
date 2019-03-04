@@ -200,7 +200,6 @@ func CachePage(store persistence.CacheStore, expire time.Duration, handle gin.Ha
 		} else {
 			// Remove disallowed headers from the cache result
 			cleanedHeaders := cloneHeadersForCache(cache.Header)
-			c.Writer.Header().Set("X-Cache-Status", "HIT")
 
 			// Output the cached result
 			c.Writer.WriteHeader(cache.Status)
@@ -209,6 +208,8 @@ func CachePage(store persistence.CacheStore, expire time.Duration, handle gin.Ha
 					c.Writer.Header().Set(k, v)
 				}
 			}
+
+			c.Writer.Header().Set("X-Cache-Status", "HIT")
 			c.Writer.Write(cache.Data)
 		}
 	}
@@ -232,7 +233,6 @@ func CachePageWithoutQuery(store persistence.CacheStore, expire time.Duration, h
 		} else {
 			// Remove disallowed headers from the cache result
 			cleanedHeaders := cloneHeadersForCache(cache.Header)
-			c.Writer.Header().Set("X-Cache-Status", "HIT")
 
 			c.Writer.WriteHeader(cache.Status)
 			for k, vals := range cleanedHeaders {
@@ -240,6 +240,8 @@ func CachePageWithoutQuery(store persistence.CacheStore, expire time.Duration, h
 					c.Writer.Header().Set(k, v)
 				}
 			}
+
+			c.Writer.Header().Set("X-Cache-Status", "HIT")
 			c.Writer.Write(cache.Data)
 		}
 	}
