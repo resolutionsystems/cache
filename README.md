@@ -56,3 +56,16 @@ func main() {
 	r.Run(":8080")
 }
 ```
+
+### Resolution Systems Enhancements
+
+The ResSys version of this library has two important modifications:
+
+1. The HTTP header `Authorization` is stripped from cached responses (cache misses will still include this header).
+2. The HTTP header `X-Cache-Status` is set to `HIT` or `MISS` to aid with debugging and tracing.
+
+Some notes on safe, secure usage of this cache:
+
+Perform authentication and authorisation checks earlier in the middleware than the caching, and so avoid returning a pre-cached document that the current user should not see.
+You should only ever cache pages for which the response does not depend on the currently authenticated user. For example, the page `/my-profile` should not be cached, but `/profile/andy` can be cached.
+
