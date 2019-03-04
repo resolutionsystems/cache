@@ -98,7 +98,7 @@ func (w *cachedWriter) Write(data []byte) (int, error) {
 		//cache responses with a status code < 300
 		if w.Status() < 300 {
 			// Remove the disallowed headers prior to caching
-			cleanedHeaders := removeDisallowedHeaders(w.Header())
+			cleanedHeaders := cloneHeadersForCache(w.Header())
 
 			// Set the response in the cache
 			val := responseCache{
@@ -116,7 +116,7 @@ func (w *cachedWriter) Write(data []byte) (int, error) {
 	return ret, err
 }
 
-func removeDisallowedHeaders(headers http.Header) http.Header {
+func cloneHeadersForCache(headers http.Header) http.Header {
 	// Duplicate the incoming Header object
 	retval := make(http.Header)
 	for key, value := range headers {
@@ -135,7 +135,7 @@ func (w *cachedWriter) WriteString(data string) (n int, err error) {
 	//cache responses with a status code < 300
 	if err == nil && w.Status() < 300 {
 		// Remove the disallowed headers prior to caching
-		cleanedHeaders := removeDisallowedHeaders(w.Header())
+		cleanedHeaders := cloneHeadersForCache(w.Header())
 
 		store := w.store
 		val := responseCache{
@@ -164,7 +164,7 @@ func SiteCache(store persistence.CacheStore, expire time.Duration) gin.HandlerFu
 		if err := store.Get(key, &cache); err != nil {
 			c.Next()
 		} else {
-			cleanedHeaders := removeDisallowedHeaders(cache.Header)
+			cleanedHeaders := cloneHeadersForCache(cache.Header)
 			c.Writer.WriteHeader(cache.Status)
 			for k, vals := range cleanedHeaders {
 				for _, v := range vals {
@@ -199,7 +199,7 @@ func CachePage(store persistence.CacheStore, expire time.Duration, handle gin.Ha
 			}
 		} else {
 			// Remove disallowed headers from the cache result
-			cleanedHeaders := removeDisallowedHeaders(cache.Header)
+			cleanedHeaders := cloneHeadersForCache(cache.Header)
 			c.Writer.Header().Set("X-Cache-Status", "HIT")
 
 			// Output the cached result
@@ -231,7 +231,7 @@ func CachePageWithoutQuery(store persistence.CacheStore, expire time.Duration, h
 			handle(c)
 		} else {
 			// Remove disallowed headers from the cache result
-			cleanedHeaders := removeDisallowedHeaders(cache.Header)
+			cleanedHeaders := cloneHeadersForCache(cache.Header)
 			c.Writer.Header().Set("X-Cache-Status", "HIT")
 
 			c.Writer.WriteHeader(cache.Status)
