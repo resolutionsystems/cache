@@ -3,13 +3,13 @@ package cache
 import (
 	"bytes"
 	"crypto/sha1"
+	"encoding/gob"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"sync"
 	"time"
-	"encoding/gob"
 
 	"github.com/gin-contrib/cache/persistence"
 	"github.com/gin-gonic/gin"
@@ -20,7 +20,11 @@ const (
 )
 
 var (
-	PageCachePrefix = "gincontrib.page.cache"
+	PageCachePrefix    = "gincontrib.page.cache"
+	DISALLOWED_HEADERS = []string{
+		"Authorization",
+		"X-Cache-Status",
+	}
 )
 
 type responseCache struct {
@@ -28,6 +32,7 @@ type responseCache struct {
 	Header http.Header
 	Data   []byte
 }
+
 // RegisterResponseCacheGob registers the responseCache type with the encoding/gob package
 func RegisterResponseCacheGob() {
 	gob.Register(responseCache{})
@@ -92,11 +97,16 @@ func (w *cachedWriter) Write(data []byte) (int, error) {
 
 		//cache responses with a status code < 300
 		if w.Status() < 300 {
+			// Remove the disallowed headers prior to caching
+			cleanedHeaders := cloneHeadersForCache(w.Header())
+
+			// Set the response in the cache
 			val := responseCache{
 				w.Status(),
-				w.Header(),
+				cleanedHeaders,
 				data,
 			}
+
 			err = store.Set(w.key, val, w.expire)
 			if err != nil {
 				// need logger
@@ -106,14 +116,31 @@ func (w *cachedWriter) Write(data []byte) (int, error) {
 	return ret, err
 }
 
+func cloneHeadersForCache(headers http.Header) http.Header {
+	// Duplicate the incoming Header object
+	retval := make(http.Header)
+	for key, value := range headers {
+		retval[key] = value
+	}
+
+	// Remove any disallowed headers
+	for _, header := range DISALLOWED_HEADERS {
+		delete(retval, header)
+	}
+	return retval
+}
+
 func (w *cachedWriter) WriteString(data string) (n int, err error) {
 	ret, err := w.ResponseWriter.WriteString(data)
 	//cache responses with a status code < 300
 	if err == nil && w.Status() < 300 {
+		// Remove the disallowed headers prior to caching
+		cleanedHeaders := cloneHeadersForCache(w.Header())
+
 		store := w.store
 		val := responseCache{
 			w.Status(),
-			w.Header(),
+			cleanedHeaders,
 			[]byte(data),
 		}
 		store.Set(w.key, val, w.expire)
@@ -137,8 +164,9 @@ func SiteCache(store persistence.CacheStore, expire time.Duration) gin.HandlerFu
 		if err := store.Get(key, &cache); err != nil {
 			c.Next()
 		} else {
+			cleanedHeaders := cloneHeadersForCache(cache.Header)
 			c.Writer.WriteHeader(cache.Status)
-			for k, vals := range cache.Header {
+			for k, vals := range cleanedHeaders {
 				for _, v := range vals {
 					c.Writer.Header().Set(k, v)
 				}
@@ -157,6 +185,8 @@ func CachePage(store persistence.CacheStore, expire time.Duration, handle gin.Ha
 		if err := store.Get(key, &cache); err != nil {
 			if err != persistence.ErrCacheMiss {
 				log.Println(err.Error())
+			} else {
+				c.Writer.Header().Set("X-Cache-Status", "MISS")
 			}
 			// replace writer
 			writer := newCachedWriter(store, expire, c.Writer, key)
@@ -168,12 +198,18 @@ func CachePage(store persistence.CacheStore, expire time.Duration, handle gin.Ha
 				store.Delete(key)
 			}
 		} else {
+			// Remove disallowed headers from the cache result
+			cleanedHeaders := cloneHeadersForCache(cache.Header)
+
+			// Output the cached result
 			c.Writer.WriteHeader(cache.Status)
-			for k, vals := range cache.Header {
+			for k, vals := range cleanedHeaders {
 				for _, v := range vals {
 					c.Writer.Header().Set(k, v)
 				}
 			}
+
+			c.Writer.Header().Set("X-Cache-Status", "HIT")
 			c.Writer.Write(cache.Data)
 		}
 	}
@@ -187,18 +223,25 @@ func CachePageWithoutQuery(store persistence.CacheStore, expire time.Duration, h
 		if err := store.Get(key, &cache); err != nil {
 			if err != persistence.ErrCacheMiss {
 				log.Println(err.Error())
+			} else {
+				c.Writer.Header().Set("X-Cache-Status", "MISS")
 			}
 			// replace writer
 			writer := newCachedWriter(store, expire, c.Writer, key)
 			c.Writer = writer
 			handle(c)
 		} else {
+			// Remove disallowed headers from the cache result
+			cleanedHeaders := cloneHeadersForCache(cache.Header)
+
 			c.Writer.WriteHeader(cache.Status)
-			for k, vals := range cache.Header {
+			for k, vals := range cleanedHeaders {
 				for _, v := range vals {
 					c.Writer.Header().Set(k, v)
 				}
 			}
+
+			c.Writer.Header().Set("X-Cache-Status", "HIT")
 			c.Writer.Write(cache.Data)
 		}
 	}
@@ -223,6 +266,8 @@ func CachePageWithoutHeader(store persistence.CacheStore, expire time.Duration, 
 		if err := store.Get(key, &cache); err != nil {
 			if err != persistence.ErrCacheMiss {
 				log.Println(err.Error())
+			} else {
+				c.Writer.Header().Set("X-Cache-Status", "MISS")
 			}
 			// replace writer
 			writer := newCachedWriter(store, expire, c.Writer, key)
@@ -234,6 +279,8 @@ func CachePageWithoutHeader(store persistence.CacheStore, expire time.Duration, 
 				store.Delete(key)
 			}
 		} else {
+			c.Writer.Header().Set("X-Cache-Status", "HIT")
+
 			c.Writer.WriteHeader(cache.Status)
 			c.Writer.Write(cache.Data)
 		}
