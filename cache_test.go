@@ -52,6 +52,9 @@ func TestCachePage(t *testing.T) {
 	assert.Equal(t, 200, w1.Code)
 	assert.Equal(t, 200, w2.Code)
 	assert.Equal(t, w1.Body.String(), w2.Body.String())
+
+	assert.Equal(t, w1.Header().Get("X-Cache-Status"), "MISS")
+	assert.Equal(t, w2.Header().Get("X-Cache-Status"), "HIT")
 }
 
 func TestCachePageExpire(t *testing.T) {
@@ -69,6 +72,9 @@ func TestCachePageExpire(t *testing.T) {
 	assert.Equal(t, 200, w1.Code)
 	assert.Equal(t, 200, w2.Code)
 	assert.NotEqual(t, w1.Body.String(), w2.Body.String())
+
+	assert.Equal(t, w1.Header().Get("X-Cache-Status"), "MISS")
+	assert.Equal(t, w2.Header().Get("X-Cache-Status"), "MISS")
 }
 
 func TestCachePageAtomic(t *testing.T) {
@@ -120,6 +126,9 @@ func TestCachePageWithoutHeader(t *testing.T) {
 	assert.NotNil(t, w1.Header()["Content-Type"])
 	assert.Nil(t, w2.Header()["Content-Type"])
 	assert.Equal(t, w1.Body.String(), w2.Body.String())
+
+	assert.Equal(t, w1.Header().Get("X-Cache-Status"), "MISS")
+	assert.Equal(t, w2.Header().Get("X-Cache-Status"), "HIT")
 }
 
 func TestCachePageWithoutHeaderExpire(t *testing.T) {
@@ -139,6 +148,9 @@ func TestCachePageWithoutHeaderExpire(t *testing.T) {
 	assert.NotNil(t, w1.Header()["Content-Type"])
 	assert.NotNil(t, w2.Header()["Content-Type"])
 	assert.NotEqual(t, w1.Body.String(), w2.Body.String())
+
+	assert.Equal(t, w1.Header().Get("X-Cache-Status"), "MISS")
+	assert.Equal(t, w2.Header().Get("X-Cache-Status"), "MISS")
 }
 
 func TestCacheHtmlFile(t *testing.T) {
@@ -156,6 +168,9 @@ func TestCacheHtmlFile(t *testing.T) {
 	assert.Equal(t, 200, w1.Code)
 	assert.Equal(t, 200, w2.Code)
 	assert.Equal(t, w1.Body.String(), w2.Body.String())
+
+	assert.Equal(t, w1.Header().Get("X-Cache-Status"), "MISS")
+	assert.Equal(t, w2.Header().Get("X-Cache-Status"), "HIT")
 }
 
 func TestCacheHtmlFileExpire(t *testing.T) {
@@ -174,6 +189,9 @@ func TestCacheHtmlFileExpire(t *testing.T) {
 	assert.Equal(t, 200, w1.Code)
 	assert.Equal(t, 200, w2.Code)
 	assert.NotEqual(t, w1.Body.String(), w2.Body.String())
+
+	assert.Equal(t, w1.Header().Get("X-Cache-Status"), "MISS")
+	assert.Equal(t, w2.Header().Get("X-Cache-Status"), "MISS")
 }
 
 func TestCachePageAborted(t *testing.T) {
@@ -191,6 +209,9 @@ func TestCachePageAborted(t *testing.T) {
 	assert.Equal(t, 200, w1.Code)
 	assert.Equal(t, 200, w2.Code)
 	assert.NotEqual(t, w1.Body.String(), w2.Body.String())
+
+	assert.Equal(t, w1.Header().Get("X-Cache-Status"), "MISS")
+	assert.Equal(t, w2.Header().Get("X-Cache-Status"), "MISS")
 }
 
 func TestCachePage400(t *testing.T) {
@@ -208,6 +229,9 @@ func TestCachePage400(t *testing.T) {
 	assert.Equal(t, 400, w1.Code)
 	assert.Equal(t, 400, w2.Code)
 	assert.NotEqual(t, w1.Body.String(), w2.Body.String())
+
+	assert.Equal(t, w1.Header().Get("X-Cache-Status"), "MISS")
+	assert.Equal(t, w2.Header().Get("X-Cache-Status"), "MISS")
 }
 
 func TestCachePageWithoutHeaderAborted(t *testing.T) {
@@ -227,6 +251,9 @@ func TestCachePageWithoutHeaderAborted(t *testing.T) {
 	assert.NotNil(t, w1.Header()["Content-Type"])
 	assert.NotNil(t, w2.Header()["Content-Type"])
 	assert.NotEqual(t, w1.Body.String(), w2.Body.String())
+
+	assert.Equal(t, w1.Header().Get("X-Cache-Status"), "MISS")
+	assert.Equal(t, w2.Header().Get("X-Cache-Status"), "MISS")
 }
 
 func TestCachePageWithoutHeader400(t *testing.T) {
@@ -246,6 +273,9 @@ func TestCachePageWithoutHeader400(t *testing.T) {
 	assert.NotNil(t, w1.Header()["Content-Type"])
 	assert.NotNil(t, w2.Header()["Content-Type"])
 	assert.NotEqual(t, w1.Body.String(), w2.Body.String())
+
+	assert.Equal(t, w1.Header().Get("X-Cache-Status"), "MISS")
+	assert.Equal(t, w2.Header().Get("X-Cache-Status"), "MISS")
 }
 
 func TestCachePageStatus207(t *testing.T) {
@@ -263,6 +293,9 @@ func TestCachePageStatus207(t *testing.T) {
 	assert.Equal(t, 207, w1.Code)
 	assert.Equal(t, 207, w2.Code)
 	assert.Equal(t, w1.Body.String(), w2.Body.String())
+
+	assert.Equal(t, w1.Header().Get("X-Cache-Status"), "MISS")
+	assert.Equal(t, w2.Header().Get("X-Cache-Status"), "HIT")
 }
 
 func TestCachePageWithoutQuery(t *testing.T) {
@@ -279,6 +312,9 @@ func TestCachePageWithoutQuery(t *testing.T) {
 	assert.Equal(t, 200, w1.Code)
 	assert.Equal(t, 200, w2.Code)
 	assert.Equal(t, w1.Body.String(), w2.Body.String())
+
+	assert.Equal(t, w1.Header().Get("X-Cache-Status"), "MISS")
+	assert.Equal(t, w2.Header().Get("X-Cache-Status"), "HIT")
 }
 
 func TestRegisterResponseCacheGob(t *testing.T) {
@@ -316,10 +352,12 @@ func TestCacheDisallowedHeadersAddedInHandler(t *testing.T) {
 	assert.Equal(t, w1.Body.String(), w2.Body.String())
 
 	assert.Equal(t, w1.Header().Get("X-Test-Header"), "Good Boy")
+	assert.Equal(t, w1.Header().Get("X-Cache-Status"), "MISS")
 	// The uncached version should return the Authorization header
 	assert.NotEqual(t, w1.Header().Get("Authorization"), "")
 
 	assert.Equal(t, w2.Header().Get("X-Test-Header"), "Good Boy")
+	assert.Equal(t, w2.Header().Get("X-Cache-Status"), "HIT")
 	// The cached version should not return the Authorization header
 	assert.Equal(t, w2.Header().Get("Authorization"), "")
 }
@@ -345,10 +383,12 @@ func TestCacheDisallowedHeadersAddedBeforeCache(t *testing.T) {
 	assert.Equal(t, w1.Body.String(), w2.Body.String())
 
 	assert.Equal(t, w1.Header().Get("X-Test-Header"), "Good Boy")
+	assert.Equal(t, w1.Header().Get("X-Cache-Status"), "MISS")
 	// The uncached version should return the Authorization header
 	assert.NotEqual(t, w1.Header().Get("Authorization"), "")
 
 	assert.Equal(t, w2.Header().Get("X-Test-Header"), "Good Boy")
+	assert.Equal(t, w2.Header().Get("X-Cache-Status"), "HIT")
 	// The cached version should *NOT* return the Authorization header
 	assert.Equal(t, w2.Header().Get("Authorization"), "")
 }

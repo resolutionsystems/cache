@@ -23,6 +23,7 @@ var (
 	PageCachePrefix    = "gincontrib.page.cache"
 	DISALLOWED_HEADERS = []string{
 		"Authorization",
+		"X-Cache-Status",
 	}
 )
 
@@ -184,6 +185,8 @@ func CachePage(store persistence.CacheStore, expire time.Duration, handle gin.Ha
 		if err := store.Get(key, &cache); err != nil {
 			if err != persistence.ErrCacheMiss {
 				log.Println(err.Error())
+			} else {
+				c.Writer.Header().Set("X-Cache-Status", "MISS")
 			}
 			// replace writer
 			writer := newCachedWriter(store, expire, c.Writer, key)
@@ -202,6 +205,7 @@ func CachePage(store persistence.CacheStore, expire time.Duration, handle gin.Ha
 
 			// Remove disallowed headers from the cache result
 			cleanedHeaders := removeDisallowedHeaders(cache.Header)
+			c.Writer.Header().Set("X-Cache-Status", "HIT")
 
 			// Output the cached result
 			c.Writer.WriteHeader(cache.Status)
@@ -223,6 +227,8 @@ func CachePageWithoutQuery(store persistence.CacheStore, expire time.Duration, h
 		if err := store.Get(key, &cache); err != nil {
 			if err != persistence.ErrCacheMiss {
 				log.Println(err.Error())
+			} else {
+				c.Writer.Header().Set("X-Cache-Status", "MISS")
 			}
 			// replace writer
 			writer := newCachedWriter(store, expire, c.Writer, key)
@@ -236,6 +242,8 @@ func CachePageWithoutQuery(store persistence.CacheStore, expire time.Duration, h
 
 			// Remove disallowed headers from the cache result
 			cleanedHeaders := removeDisallowedHeaders(cache.Header)
+			c.Writer.Header().Set("X-Cache-Status", "HIT")
+
 			c.Writer.WriteHeader(cache.Status)
 			for k, vals := range cleanedHeaders {
 				for _, v := range vals {
@@ -266,6 +274,8 @@ func CachePageWithoutHeader(store persistence.CacheStore, expire time.Duration, 
 		if err := store.Get(key, &cache); err != nil {
 			if err != persistence.ErrCacheMiss {
 				log.Println(err.Error())
+			} else {
+				c.Writer.Header().Set("X-Cache-Status", "MISS")
 			}
 			// replace writer
 			writer := newCachedWriter(store, expire, c.Writer, key)
@@ -277,6 +287,8 @@ func CachePageWithoutHeader(store persistence.CacheStore, expire time.Duration, 
 				store.Delete(key)
 			}
 		} else {
+			c.Writer.Header().Set("X-Cache-Status", "HIT")
+
 			c.Writer.WriteHeader(cache.Status)
 			c.Writer.Write(cache.Data)
 		}
