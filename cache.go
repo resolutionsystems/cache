@@ -198,11 +198,6 @@ func CachePage(store persistence.CacheStore, expire time.Duration, handle gin.Ha
 				store.Delete(key)
 			}
 		} else {
-			// Remove any disallowed headers created before reading from the cache
-			for _, header := range DISALLOWED_HEADERS {
-				c.Writer.Header().Del(header)
-			}
-
 			// Remove disallowed headers from the cache result
 			cleanedHeaders := removeDisallowedHeaders(cache.Header)
 			c.Writer.Header().Set("X-Cache-Status", "HIT")
@@ -235,11 +230,6 @@ func CachePageWithoutQuery(store persistence.CacheStore, expire time.Duration, h
 			c.Writer = writer
 			handle(c)
 		} else {
-			// Remove any disallowed headers created before reading from the cache
-			for _, header := range DISALLOWED_HEADERS {
-				c.Writer.Header().Del(header)
-			}
-
 			// Remove disallowed headers from the cache result
 			cleanedHeaders := removeDisallowedHeaders(cache.Header)
 			c.Writer.Header().Set("X-Cache-Status", "HIT")

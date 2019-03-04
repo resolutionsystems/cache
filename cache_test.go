@@ -367,12 +367,17 @@ func TestCacheDisallowedHeadersAddedBeforeCache(t *testing.T) {
 
 	router := gin.New()
 	router.GET("/cache_ping", func(c *gin.Context) {
+		// Record the exact time that the Authorization header was created
+		now := time.Now().UnixNano()
+		c.Set("MM-TimeNow", now)
+
 		// Set the response headers before the cache
-		c.Header("Authorization", "BAD CACHE, no biscuit!")
+		c.Header("Authorization", "pong "+fmt.Sprint(now))
 		c.Header("X-Test-Header", "Good Boy")
 		c.Next()
 	}, CachePage(store, time.Second*3, func(c *gin.Context) {
-		c.String(200, "pong "+fmt.Sprint(time.Now().UnixNano()))
+		// Use exact time that the Authorization header was created in the body
+		c.String(200, "pong "+fmt.Sprint(c.Value("MM-TimeNow")))
 	}))
 
 	w1 := performRequest("GET", "/cache_ping", router)
@@ -386,11 +391,15 @@ func TestCacheDisallowedHeadersAddedBeforeCache(t *testing.T) {
 	assert.Equal(t, w1.Header().Get("X-Cache-Status"), "MISS")
 	// The uncached version should return the Authorization header
 	assert.NotEqual(t, w1.Header().Get("Authorization"), "")
+	// The header should match the body
+	assert.Equal(t, w1.Header().Get("Authorization"), w1.Body.String())
 
 	assert.Equal(t, w2.Header().Get("X-Test-Header"), "Good Boy")
 	assert.Equal(t, w2.Header().Get("X-Cache-Status"), "HIT")
-	// The cached version should *NOT* return the Authorization header
-	assert.Equal(t, w2.Header().Get("Authorization"), "")
+	// The cached version should return the Authorization header
+	assert.NotEqual(t, w2.Header().Get("Authorization"), "")
+	// The header should NOT have been cached (and so not match the body)
+	assert.NotEqual(t, w2.Header().Get("Authorization"), w2.Body.String())
 }
 
 func performRequest(method, target string, router *gin.Engine) *httptest.ResponseRecorder {
