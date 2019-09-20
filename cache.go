@@ -178,10 +178,19 @@ func SiteCache(store persistence.CacheStore, expire time.Duration) gin.HandlerFu
 
 // CachePage Decorator
 func CachePage(store persistence.CacheStore, expire time.Duration, handle gin.HandlerFunc) gin.HandlerFunc {
+	keyCreator := func(c *gin.Context) string {
+		url := c.Request.URL
+		return CreateKey(url.RequestURI())
+	}
+
+	return CachePageWithKeyCreator(store, keyCreator, expire, handle)
+}
+
+// CachePage Decorator
+func CachePageWithKeyCreator(store persistence.CacheStore, keyCreator func(c *gin.Context) string, expire time.Duration, handle gin.HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var cache responseCache
-		url := c.Request.URL
-		key := CreateKey(url.RequestURI())
+		key := keyCreator(c)
 		if err := store.Get(key, &cache); err != nil {
 			if err != persistence.ErrCacheMiss {
 				log.Println(err.Error())
